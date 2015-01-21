@@ -151,7 +151,7 @@ class CloudsearchSearchBackend(BaseSearchBackend):
                 self.log.critical("Generated SearchDomain name, '%s', for index, '%s', failed validation constraints." % (
                     search_domain_name, index))
                 raise
-            domain = self.boto_conn.get_domain(search_domain_name)
+            domain = self.boto_conn.lookup(search_domain_name)
             should_build_schema = False
             if domain is None:
                 domain = self.boto_conn.create_domain(search_domain_name)
@@ -394,7 +394,7 @@ class CloudsearchSearchBackend(BaseSearchBackend):
         return False
 
     def domain_processing_spinlock(self, domains):
-        return self.spinlock(lambda: not filter(None, map(self.boto_conn.get_domain, domains)), CloudsearchProcessingException, 'domain processing')
+        return self.spinlock(lambda: not filter(None, map(self.boto_conn.lookup, domains)), CloudsearchProcessingException, 'domain processing')
 
     def search(self, query_string, **kwargs):
         """ Blended search across all SearchIndexes.
