@@ -18,6 +18,7 @@ from haystack_cloudsearch.cloudsearch_utils import (ID, DJANGO_CT, DJANGO_ID,
                                                     botobool)
 
 try:
+    import boto
     from boto import cloudsearch2
 except ImportError:
     raise MissingDependency("The 'cloudsearch' backend requires the installation of 'boto'. Please refer to the documentation.")
