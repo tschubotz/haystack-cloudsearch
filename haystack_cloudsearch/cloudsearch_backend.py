@@ -1,10 +1,10 @@
 
+import json
 import logging
 import time
 
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db.models.loading import get_model
-from django.utils import simplejson
 
 import haystack
 from haystack.backends import BaseEngine, BaseSearchBackend, BaseSearchQuery
@@ -16,19 +16,23 @@ from haystack.utils import get_identifier
 from haystack_cloudsearch.cloudsearch_utils import (ID, DJANGO_CT, DJANGO_ID,
                                                     gen_version,
                                                     botobool)
-try:
-    import boto
-except ImportError:
-    raise MissingDependency("The 'cloudsearch' backend requires the installation of 'boto'. Please refer to the documentation.")
 
 try:
-    from boto.cloudsearch import CloudsearchProcessingException, CloudsearchNeedsIndexingException
+    from boto import cloudsearch2
 except ImportError:
-    raise MissingDependency("The 'cloudsearch' backend requires an installation of 'boto' from the cloudsearch branch at https://github.com/pbs/boto")
+    raise MissingDependency("The 'cloudsearch' backend requires the installation of 'boto'. Please refer to the documentation.")
 
 
 class CloudsearchDryerExploded(Exception):
     """ This is raised when the max timeout for a spinlock is encountered. """
+    pass
+
+
+class CloudsearchProcessingException(Exception):
+    pass
+
+
+class CloudsearchNeedsIndexingException(Exception):
     pass
 
 
@@ -46,13 +50,13 @@ class CloudsearchSearchBackend(BaseSearchBackend):
         # We want to check if there is a 'REGION' passed into the connection. If there is we validate it with the
         # available regions.
         region_name = connection_options.get('REGION', None)
-        region_list = [cloudsearch_region.name for cloudsearch_region in boto.cloudsearch.regions()]
+        region_list = [cloudsearch_region.name for cloudsearch_region in cloudsearch2.regions()]
         region_conn = None
 
         if region_name and region_name not in region_list:
             raise ImproperlyConfigured("The 'REGION' in your connection settings is not valid. Available regions are %s" % region_list)
         elif region_name:
-            for region in boto.cloudsearch.regions():
+            for region in cloudsearch2.regions():
                 if region.name == region_name:
                     region_conn = region
                     break
@@ -156,7 +160,7 @@ class CloudsearchSearchBackend(BaseSearchBackend):
             ideal_schema = self.build_schema(index.fields)
             if not should_build_schema:
                 # load the schema as a python data type to compare to the idealized schema
-                schema = simplejson.loads(simplejson.dumps([d['options'] for d in description]))
+                schema = json.loads(json.dumps([d['options'] for d in description]))
                 key = lambda x: x[u'index_field_name']
                 if [x for x in sorted(schema, key=key)] != [x for x in sorted(ideal_schema, key=key)]:
                     self.setup_complete = False
